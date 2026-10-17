@@ -1,1 +1,1 @@
-{"version": 1, "salt": "z2xyRIzo/189/B0tgdvxwA==", "iv": "0ubYF36MIgP9dUD/", "iterations": 600000, "bytes": 23438825, "compression": "gzip", "aad": "private-photo-book-v1"}
+{"version": 2, "format": "album-json", "salt": "Np6sOCTUM/7+WSuesT82nA==", "iv": "TnnI9Cnsuvz4GHif", "iterations": 600000, "bytes": 6317878, "aad": "private-photo-book-v2", "payload": "album-6d64783cf5c09c2c.enc", "sha256": "6d64783cf5c09c2c1ddf2d5525bd28926c0a76bd5efecb6e1936ec90b70a53c6"}
