@@ -10,6 +10,8 @@
 #reading-room{position:absolute;inset:42px 0 0;display:grid;grid-template-rows:minmax(0,1fr) 48px;padding:8px 12px 2px}
 #book-stage{display:grid;place-items:center;position:relative;min-height:0}
 #book-rig{position:relative;display:grid;place-items:center;max-width:100%;max-height:100%}
+#book-rig{cursor:grab;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+#book-rig.is-dragging{cursor:grabbing}
 .pagebook{position:relative;isolation:isolate;filter:drop-shadow(0 8px 12px rgb(29 37 61 / 17%))}
 .pagebook.flip-view{width:100%;height:100%;transition:transform 620ms ease}
 .pagebook.flip-view[data-edge="front"]{transform:translateX(-25%)}

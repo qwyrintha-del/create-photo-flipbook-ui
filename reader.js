@@ -10,6 +10,7 @@
   const twoFrames=()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
 
   function layout(){
+    cancelDrag();
     const width=Math.round(window.visualViewport?.width || window.innerWidth);
     const height=Math.round(window.visualViewport?.height || window.innerHeight);
     rotated=height>width;
@@ -42,10 +43,11 @@
     }
     previous.disabled=current===0||turning;
     next.disabled=current===15||turning;
+    modeButton.disabled=turning;
     label.textContent=current===0?'封面':current===15?'封底':String(current+1).padStart(2,'0')+' / 16';
     modeButton.textContent=simple?'翻页版':'简洁版';
     modeButton.setAttribute('aria-pressed',String(simple));
-    document.querySelector('#reader-status').textContent=simple?'简洁双页 · 点箭头翻阅':'横屏双页 · 滑动翻阅';
+    document.querySelector('#reader-status').textContent=simple?'简洁双页 · 点箭头翻阅':'横屏双页 · 拖动书页翻阅';
   }
 
   function decoration(item){
@@ -88,6 +90,7 @@
   }
 
   function disposeFlip(){
+    releaseDrag();
     if(flip){const old=flip;flip=null;try{old.destroy()}catch{}}
     turning=false;
   }
@@ -134,34 +137,86 @@
   }
 
   function point(event){
-    const touch=event.changedTouches?.[0];
+    const touch=event.changedTouches?Array.from(event.changedTouches).find(t=>!down||t.identifier===down.id):null;
+    if(event.changedTouches&&!touch)return null;
     return {x:touch?touch.clientX:event.clientX,y:touch?touch.clientY:event.clientY};
   }
+  // PageFlip expects unrotated coordinates relative to its drawing surface.
+  // Use the actual surface (including the centered cover offset), not the rig.
+  function localPoint(point,plane){
+    return plane.rotated?
+      {x:(point.y-plane.top)*plane.width/plane.screenHeight,y:(plane.right-point.x)*plane.height/plane.screenWidth}:
+      {x:(point.x-plane.left)*plane.width/plane.screenWidth,y:(point.y-plane.top)*plane.height/plane.screenHeight};
+  }
+  function releaseDrag(){
+    const gesture=down;down=null;
+    rig.classList.remove('is-dragging');
+    if(gesture?.pointer&&rig.hasPointerCapture?.(gesture.id))rig.releasePointerCapture(gesture.id);
+    return gesture;
+  }
+  function cancelDrag(){
+    const gesture=releaseDrag();
+    if(!gesture||!flip)return;
+    if(gesture.dragging){
+      const home={x:gesture.direction>0?gesture.plane.width-1:1,y:gesture.start.y};
+      flip.userMove(home,true);flip.userStop(home);
+    }else flip.userStop(gesture.start,true);
+  }
   function start(event){
-    if(!album||turning||event.isPrimary===false||(event.button!==undefined&&event.button!==0))return;
-    down=point(event);
-    if(event.pointerId!==undefined)rig.setPointerCapture?.(event.pointerId);
+    if(!album||turning||down||event.isPrimary===false||(event.button!==undefined&&event.button!==0))return;
+    if(event.touches&&event.touches.length!==1)return;
+    const screen=point(event);if(!screen)return;
+    const surface=flip?flip.getUI().getDistElement():book;
+    const bounds=surface.getBoundingClientRect();
+    const plane={left:bounds.left,top:bounds.top,right:bounds.right,screenWidth:bounds.width,screenHeight:bounds.height,width:surface.offsetWidth,height:surface.offsetHeight,rotated};
+    const local=localPoint(screen,plane);
+    if(local.x<0||local.x>plane.width||local.y<0||local.y>plane.height)return;
+    const direction=local.x>=plane.width/2?1:-1;
+    if((direction<0&&current===0)||(direction>0&&current===15))return;
+    down={id:event.pointerId??event.changedTouches[0].identifier,pointer:event.pointerId!==undefined,start:local,plane,direction,dragging:false};
+    if(flip)flip.startUserTouch(local);
+    if(down.pointer)rig.setPointerCapture?.(down.id);
     if(event.cancelable)event.preventDefault();
   }
+  function move(event){
+    if(!down||(down.pointer&&event.pointerId!==down.id))return;
+    const screen=point(event);if(!screen)return;
+    if(event.cancelable)event.preventDefault();
+    const local=localPoint(screen,down.plane);
+    if(!down.dragging&&Math.hypot(local.x-down.start.x,local.y-down.start.y)>5){
+      down.dragging=true;rig.classList.add('is-dragging');
+      // Seed direction at the original touch, even if a fast move crosses the spine.
+      if(flip)flip.getFlipController().fold(down.start);
+    }
+    if(down.dragging&&flip)flip.userMove(local,true);
+  }
   function end(event){
-    if(!down)return;
-    const up=point(event);
-    const delta=rotated?up.y-down.y:up.x-down.x;
-    down=null;
-    if(Math.abs(delta)>26){turn(delta<0?1:-1);return}
-    const bounds=rig.getBoundingClientRect();
-    const fraction=rotated?(up.y-bounds.top)/bounds.height:(up.x-bounds.left)/bounds.width;
-    turn(fraction>.5?1:-1);
+    if(!down||(down.pointer&&event.pointerId!==down.id))return;
+    const screen=point(event);if(!screen)return;
+    if(event.cancelable)event.preventDefault();
+    move(event);
+    const local=localPoint(screen,down.plane);
+    const gesture=releaseDrag();
+    if(flip){
+      flip.userStop(local,!gesture.dragging);
+      if(!gesture.dragging)turn(gesture.direction);
+    }else if(gesture.dragging){
+      const delta=local.x-gesture.start.x;
+      if(Math.abs(delta)>26)turn(delta<0?1:-1);
+    }else turn(gesture.direction);
   }
   rig.style.touchAction='none';
   if(window.PointerEvent){
     rig.addEventListener('pointerdown',start);
+    rig.addEventListener('pointermove',move);
     rig.addEventListener('pointerup',end);
-    rig.addEventListener('pointercancel',()=>{down=null});
+    rig.addEventListener('pointercancel',event=>{if(down?.id===event.pointerId)cancelDrag()});
+    rig.addEventListener('lostpointercapture',event=>{if(down?.id===event.pointerId)cancelDrag()});
   }else{
     rig.addEventListener('touchstart',start,{passive:false});
+    rig.addEventListener('touchmove',move,{passive:false});
     rig.addEventListener('touchend',end,{passive:false});
-    rig.addEventListener('touchcancel',()=>{down=null});
+    rig.addEventListener('touchcancel',cancelDrag);
   }
 
   previous.addEventListener('click',()=>turn(-1));
