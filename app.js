@@ -4,6 +4,11 @@ const status=document.querySelector('#status');
 const button=document.querySelector('#unlock');
 const progress=document.querySelector('#progress');
 const frame=document.querySelector('#book-frame');
+window.addEventListener('message',event=>{
+ if(event.source!==frame.contentWindow||event.data?.type!=='private-album-page-turn')return;
+ const page=Number(event.data.page);
+ if(Number.isInteger(page)&&page>=0&&page<16)window.albumMusic.playTurn(page);
+});
 let encryptedBytes=null,config=null,blobUrl=null,busy=false;
 const bytes=value=>Uint8Array.from(atob(value),c=>c.charCodeAt(0));
 const normalize=value=>value.toUpperCase().replace(/[\s-]/g,'');
