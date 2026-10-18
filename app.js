@@ -6,7 +6,7 @@ const progress=document.querySelector('#progress');
 const gate=document.querySelector('#gate');
 const reader=document.querySelector('#reader');
 const loading=document.querySelector('#reader-loading');
-let encryptedBytes=null,config=null,busy=false,generation=0,payloadTask=null;
+let encryptedBytes=null,config=null,busy=false,generation=0,payloadTask=null,phase='目录';
 const bytes=value=>Uint8Array.from(atob(value),c=>c.charCodeAt(0));
 const normalize=value=>value.toUpperCase().replace(/[\s-]/g,'');
 function say(text,error=false){status.textContent=text;status.classList.toggle('error',error)}
@@ -17,15 +17,6 @@ reveal.addEventListener('click',()=>{
 });
 function conceal(){input.type='password';reveal.textContent='显示';reveal.setAttribute('aria-label','显示密码');reveal.setAttribute('aria-pressed','false')}
 
-async function fetchFile(path,cache){
- const controller=new AbortController();
- const timeout=setTimeout(()=>controller.abort(),90000);
- try{
-  const response=await fetch(path,{cache,credentials:'omit',referrerPolicy:'no-referrer',signal:controller.signal});
-  if(!response.ok)throw new Error('NETWORK');
-  return {response,release:()=>clearTimeout(timeout)};
- }catch(error){clearTimeout(timeout);throw error}
-}
 async function loadPayload(){
  if(payloadTask)return payloadTask;
  if(encryptedBytes&&config)return;
@@ -33,32 +24,23 @@ async function loadPayload(){
  return payloadTask;
 }
 async function fetchPayload(){
- let result=await fetchFile('album-config.json','no-store');
- try{config=await result.response.json()}finally{result.release()}
- if(config.version!==2||config.format!=='album-json'||config.iterations!==600000||
-    !/^album-[a-f0-9]{16}\.enc$/.test(config.payload)||!Number.isInteger(config.bytes)||
-    config.bytes<1000||config.bytes>40000000||!/^[a-f0-9]{64}$/.test(config.sha256))throw new Error('FORMAT');
- result=await fetchFile(config.payload,'force-cache');
+ phase='目录';
  progress.hidden=false;progress.value=0;
- try{
-  const payload=result.response;
-  if(payload.body&&typeof payload.body.getReader==='function'){
-   const stream=payload.body.getReader();const chunks=[];let size=0;
-   for(;;){
-    const part=await stream.read();if(part.done)break;
-    chunks.push(part.value);size+=part.value.length;
-    if(size>config.bytes){await stream.cancel();throw new Error('NETWORK')}
-    progress.value=Math.min(100,size/config.bytes*100);
-    say((busy?'正在载入相册… ':'正在提前载入相册… ')+Math.round(progress.value)+'%');
-   }
-   encryptedBytes=new Uint8Array(size);let offset=0;
-   for(const chunk of chunks){encryptedBytes.set(chunk,offset);offset+=chunk.length}
-  }else{encryptedBytes=new Uint8Array(await payload.arrayBuffer())}
- }finally{result.release()}
- if(encryptedBytes.length!==config.bytes){encryptedBytes=null;throw new Error('NETWORK')}
- const digest=await crypto.subtle.digest('SHA-256',encryptedBytes);
- const hex=Array.from(new Uint8Array(digest),x=>x.toString(16).padStart(2,'0')).join('');
- if(hex!==config.sha256){encryptedBytes=null;throw new Error('NETWORK')}
+ const result=await window.albumTransport.load((loaded,total)=>{
+  phase='照片';progress.value=Math.min(100,loaded/total*100);
+  say((busy?'正在载入相册… ':'正在提前载入相册… ')+Math.round(progress.value)+'%');
+ });
+ config=result.config;encryptedBytes=result.data;
+}
+function showFailure(error){
+ const stage=error.stage||phase;
+ const code=error.reason||error.message;
+ const detail=['FORMAT','SIZE','HASH','TIMEOUT','FETCH'].includes(code)||/^HTTP\d{3}$/.test(code)?code:'BROWSER';
+ const marker='（F/'+stage+'/'+detail+'）';
+ if(stage==='目录')say('相册目录未能载入，请稍后重试或用 Safari 打开。'+marker,true);
+ else if(stage==='照片'||stage==='校验')say('照片未下载完整，已保留成功的部分；再次点击“打开相册”继续。'+marker,true);
+ else if(stage==='解锁')say('浏览器未能完成解锁，请用 Safari 或 Chrome 打开。'+marker,true);
+ else say('书页未能显示，请用 Safari 或 Chrome 打开。'+marker,true);
 }
 
 // Use password-entry time to fetch ciphertext, without storing or sending the password.
@@ -66,8 +48,8 @@ input.addEventListener('focus',()=>{
  if(!window.crypto?.subtle)return;
  loadPayload().then(()=>{
   if(!busy){say('相册已备好，输入密码就可以打开。');progress.hidden=true}
- }).catch(()=>{
-  if(!busy){encryptedBytes=null;config=null;progress.hidden=true;say('请输入密码，点击后继续载入相册。')}
+ }).catch(error=>{
+  if(!busy){encryptedBytes=null;config=null;progress.hidden=true;showFailure(error)}
  });
 },{once:true});
 
@@ -83,19 +65,19 @@ function closeReader(){
 form.addEventListener('submit',async event=>{
  event.preventDefault();if(busy)return;
  if(!window.crypto?.subtle){say('这个内置浏览器暂不支持解锁，请从右上角菜单选择“在浏览器打开”，使用 Safari 或 Chrome。',true);return}
- if(!window.albumReader){say('阅读器未加载完整，请刷新后重试，或在系统浏览器打开。',true);return}
+ if(!window.albumReader||!window.albumTransport){say('阅读器未加载完整，请刷新后重试，或在系统浏览器打开。',true);return}
  const password=normalize(input.value);if(!password){say('请输入访问密码。',true);return}
  const requestId=++generation;
  busy=true;button.disabled=true;say('正在准备相册…');
  window.albumMusic?.prepare();
  try{
-  await loadPayload();say('正在解锁…');
+  await loadPayload();phase='解锁';say('正在解锁…');
   const material=await crypto.subtle.importKey('raw',new TextEncoder().encode(password),'PBKDF2',false,['deriveKey']);
   const key=await crypto.subtle.deriveKey({name:'PBKDF2',salt:bytes(config.salt),iterations:config.iterations,hash:'SHA-256'},material,{name:'AES-GCM',length:256},false,['decrypt']);
   let plain;
   try{plain=await crypto.subtle.decrypt({name:'AES-GCM',iv:bytes(config.iv),additionalData:new TextEncoder().encode(config.aad)},key,encryptedBytes)}
   catch{say('密码不正确，请核对后再试。',true);return}
-  const data=JSON.parse(new TextDecoder().decode(plain));
+  phase='书页';const data=JSON.parse(new TextDecoder().decode(plain));
   if(requestId!==generation)return;
   input.value='';conceal();input.blur();
   gate.hidden=true;reader.hidden=false;loading.hidden=false;
@@ -111,9 +93,8 @@ form.addEventListener('submit',async event=>{
   if(requestId!==generation)return;
   window.albumReader?.destroy();window.albumMusic?.stop();
   reader.hidden=true;loading.hidden=true;gate.hidden=false;document.body.classList.remove('reading');
-  if(error.message==='FORMAT')say('页面版本已更新，请刷新链接后再打开。',true);
-  else if(error.message==='IMAGE'||error.message==='READER')say('书页没有显示成功，请刷新重试，或从右上角选择“在浏览器打开”。',true);
-  else{encryptedBytes=null;config=null;say('相册载入未完成，请检查网络后重试。',true)}
+  if(error.stage){encryptedBytes=null;config=null}
+  showFailure(error);
  }finally{busy=false;button.disabled=false;progress.hidden=true}
 });
 document.querySelector('#lock').addEventListener('click',closeReader);
