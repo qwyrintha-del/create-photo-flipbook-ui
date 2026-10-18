@@ -38,7 +38,7 @@ function showFailure(error){
  const detail=['FORMAT','SIZE','HASH','TIMEOUT','FETCH'].includes(code)||/^HTTP\d{3}$/.test(code)?code:'BROWSER';
  const marker='（F/'+stage+'/'+detail+'）';
  if(stage==='目录')say('相册目录未能载入，请稍后重试或用 Safari 打开。'+marker,true);
- else if(stage==='照片'||stage==='校验')say('照片未下载完整，已保留成功的部分；再次点击“打开相册”继续。'+marker,true);
+ else if(stage==='照片'||stage==='校验')say('照片未载入完整，已保留成功的部分；再次点击“打开相册”继续。'+marker,true);
  else if(stage==='解锁')say('浏览器未能完成解锁，请用 Safari 或 Chrome 打开。'+marker,true);
  else say('书页未能显示，请用 Safari 或 Chrome 打开。'+marker,true);
 }
