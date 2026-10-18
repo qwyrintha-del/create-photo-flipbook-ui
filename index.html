@@ -8,8 +8,8 @@
 <meta name="theme-color" content="#eff3f7">
 <title>给你的相册</title>
 <link rel="icon" href="data:,">
-<link rel="stylesheet" href="app.css?v=20261018c">
-<link rel="stylesheet" href="reader.css?v=20261018c">
+<link rel="stylesheet" href="app.css?v=20261018d">
+<link rel="stylesheet" href="reader.css?v=20261018d">
 </head>
 <body>
 <main id="gate">
@@ -39,19 +39,20 @@
 <div id="reader-loading" role="status" hidden>正在打开书页…</div>
 <main id="reading-room">
 <section id="book-stage" aria-label="可翻阅的照片书">
-<img class="floating-sticker flower" src="stickers/flower.png" alt="" aria-hidden="true">
+<div id="sticker-playground" role="group" aria-label="点点小图案，会变成小爱心"></div>
 <div id="book-rig"></div>
-<img class="floating-sticker star" src="stickers/star.png" alt="" aria-hidden="true">
+
 </section>
 <nav class="book-controls" aria-label="翻页控制">
 <button id="previous" type="button" aria-label="上一页">←</button>
-<div class="page-status"><span id="page-status" aria-live="polite">封面</span><small>拖动页角 · 松手翻页或回弹</small></div>
+<div class="page-status"><span id="page-status" aria-live="polite">封面</span><small>拖动页角翻书 · 点点两旁的小可爱</small></div>
 <button id="next" type="button" aria-label="下一页">→</button>
 </nav>
 </main>
 </div></section>
-<script src="vendor/page-flip.browser.js?v=20261018c"></script>
-<script src="music.js?v=20261018c"></script>
-<script src="reader.js?v=20261018c"></script>
-<script src="app.js?v=20261018c"></script>
+<script src="vendor/page-flip.browser.js?v=20261018d"></script>
+<script src="music.js?v=20261018d"></script>
+<script src="stickers.js?v=20261018d"></script>
+<script src="reader.js?v=20261018d"></script>
+<script src="app.js?v=20261018d"></script>
 </body></html>

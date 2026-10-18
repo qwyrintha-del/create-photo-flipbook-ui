@@ -19,9 +19,10 @@
     inner.style.width=logicalWidth+'px';
     inner.style.height=logicalHeight+'px';
     inner.classList.toggle('rotated',rotated);
-    const pageHeight=Math.max(100,Math.min(logicalHeight-104,(logicalWidth-36)/1.5,900));
+    const pageHeight=Math.max(100,Math.min(logicalHeight-104,(logicalWidth-144)/1.5,900));
     rig.style.width=(pageHeight*1.5)+'px';
     rig.style.height=pageHeight+'px';
+    inner.style.setProperty('--sticker-rail',Math.max(32,(logicalWidth-24-pageHeight*1.5)/4)+'px');
     if(flip&&!reader.hidden){
       try{flip.update()}catch{setMode(true)}
     }
@@ -57,8 +58,10 @@
     node.className='page-decoration page-decoration--'+item.type;
     node.setAttribute('aria-hidden','true');
     node.style.left=item.x+'%';node.style.top=item.y+'%';
-    node.style.width=item.size+'%';node.style.height=(item.size*.75)+'%';
+    const size=Math.min(item.size*1.5,16);
+    node.style.width=size+'%';node.style.height=(size*.75)+'%';
     node.style.animationDelay=(-item.delay)+'s';
+    if(item.type==='heart')node.innerHTML=window.albumStickers.heartMarkup;
     if(item.type==='flower'||item.type==='star'){
       const image=document.createElement('img');
       image.src='stickers/'+item.type+'.png';image.alt='';image.draggable=false;
@@ -84,6 +87,13 @@
       for(const item of page.decorations||[]){
         const node=decoration(item);if(node)leaf.appendChild(node);
       }
+      // Extra motion lives along the paper margins, leaving the photo and title readable.
+      const accents=[
+        {type:index%2?'heart':'flower',x:8,y:14,size:8,delay:index*.3},
+        {type:'sparkle',x:89,y:44,size:6,delay:1+index*.2},
+        {type:index%3?'bubble':'star',x:12,y:88,size:7,delay:2+index*.2}
+      ];
+      for(const item of accents)leaf.appendChild(decoration(item));
       book.appendChild(leaf);
     });
     rig.appendChild(book);
@@ -252,8 +262,10 @@
       const bounds=book.getBoundingClientRect();
       if(bounds.width<50||bounds.height<80)setMode(true);
       rig.dataset.ready='true';update();
+      window.albumStickers.mount();
     },
     destroy(){
+      window.albumStickers.destroy();
       disposeFlip();album=null;book=null;current=0;down=null;
       rig.textContent='';delete rig.dataset.ready;
     },

@@ -1,6 +1,33 @@
 // Original procedural ambient score. No external media requests or recordings.
 (() => {
  let ctx=null,master=null,timer=null,active=false,effectsActive=true,nextTime=0,step=0;
+ const effectVoices=new Set();
+ function silenceEffects(){for(const voice of effectVoices){try{voice.stop()}catch{}}effectVoices.clear()}
+ function effectTone(frequency,endFrequency,time,duration,level,type='sine'){
+  const voice=ctx.createOscillator(),volume=ctx.createGain();
+  voice.type=type;voice.frequency.setValueAtTime(frequency,time);
+  voice.frequency.exponentialRampToValueAtTime(endFrequency,time+duration);
+  volume.gain.setValueAtTime(.0001,time);volume.gain.exponentialRampToValueAtTime(level,time+.012);
+  volume.gain.exponentialRampToValueAtTime(.0001,time+duration);
+  voice.connect(volume);volume.connect(ctx.destination);effectVoices.add(voice);
+  voice.onended=()=>{effectVoices.delete(voice);voice.disconnect();volume.disconnect()};
+  voice.start(time);voice.stop(time+duration+.02);
+ }
+ function playPop(){
+  if(!effectsActive||document.hidden)return;prepare();
+  if(!ctx||ctx.state!=='running')return;
+  const time=ctx.currentTime+.01;
+  effectTone(460,190,time,.19,.15);
+  effectTone(230,135,time,.15,.055);
+ }
+ function playSparkle(){
+  if(!effectsActive||document.hidden||!ctx||ctx.state!=='running')return;
+  const time=ctx.currentTime+.01;
+  [1318.51,1567.98,2093,2637.02].forEach((frequency,index)=>{
+   effectTone(frequency,frequency*1.002,time+index*.075,.34,.045);
+   effectTone(frequency*2,frequency*2,time+index*.075,.2,.009);
+  });
+ }
  const notes=[60,64,67,71,62,66,69,74,59,62,67,69,57,60,64,67];
  const bass=[48,50,43,45];
  const control=document.querySelector('#music');
@@ -42,8 +69,8 @@
   }
  }
  control.addEventListener('click',()=>active?stop():start());
- effectsControl.addEventListener('click',()=>{effectsActive=!effectsActive;effectsControl.textContent=effectsActive?'音效：开启':'音效：关闭';effectsControl.setAttribute('aria-pressed',String(effectsActive))});
- document.addEventListener('visibilitychange',()=>{if(document.hidden)stop()});
- window.addEventListener('pagehide',stop);
- window.albumMusic={prepare,start,stop,playTurn,isPlaying:()=>active,effectsEnabled:()=>effectsActive};update();
+ effectsControl.addEventListener('click',()=>{effectsActive=!effectsActive;if(!effectsActive)silenceEffects();effectsControl.textContent=effectsActive?'音效：开启':'音效：关闭';effectsControl.setAttribute('aria-pressed',String(effectsActive))});
+ document.addEventListener('visibilitychange',()=>{if(document.hidden){stop();silenceEffects()}});
+ window.addEventListener('pagehide',()=>{stop();silenceEffects()});
+ window.albumMusic={prepare,start,stop,playTurn,playPop,playSparkle,silenceEffects,isPlaying:()=>active,effectsEnabled:()=>effectsActive};update();
 })();
