@@ -64,7 +64,7 @@
     if(item.type==='heart')node.innerHTML=window.albumStickers.heartMarkup;
     if(item.type==='flower'||item.type==='star'){
       const image=document.createElement('img');
-      image.src='stickers/'+item.type+'.png';image.alt='';image.draggable=false;
+      image.src='stickers/'+item.type+'.png?v=20261018e';image.alt='';image.draggable=false;
       node.appendChild(image);
     }
     return node;

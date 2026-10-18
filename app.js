@@ -6,7 +6,7 @@ const progress=document.querySelector('#progress');
 const gate=document.querySelector('#gate');
 const reader=document.querySelector('#reader');
 const loading=document.querySelector('#reader-loading');
-let encryptedBytes=null,config=null,busy=false,generation=0;
+let encryptedBytes=null,config=null,busy=false,generation=0,payloadTask=null;
 const bytes=value=>Uint8Array.from(atob(value),c=>c.charCodeAt(0));
 const normalize=value=>value.toUpperCase().replace(/[\s-]/g,'');
 function say(text,error=false){status.textContent=text;status.classList.toggle('error',error)}
@@ -27,7 +27,12 @@ async function fetchFile(path,cache){
  }catch(error){clearTimeout(timeout);throw error}
 }
 async function loadPayload(){
+ if(payloadTask)return payloadTask;
  if(encryptedBytes&&config)return;
+ payloadTask=fetchPayload().finally(()=>{payloadTask=null});
+ return payloadTask;
+}
+async function fetchPayload(){
  let result=await fetchFile('album-config.json','no-store');
  try{config=await result.response.json()}finally{result.release()}
  if(config.version!==2||config.format!=='album-json'||config.iterations!==600000||
@@ -44,7 +49,7 @@ async function loadPayload(){
     chunks.push(part.value);size+=part.value.length;
     if(size>config.bytes){await stream.cancel();throw new Error('NETWORK')}
     progress.value=Math.min(100,size/config.bytes*100);
-    say('正在载入相册… '+Math.round(progress.value)+'%');
+    say((busy?'正在载入相册… ':'正在提前载入相册… ')+Math.round(progress.value)+'%');
    }
    encryptedBytes=new Uint8Array(size);let offset=0;
    for(const chunk of chunks){encryptedBytes.set(chunk,offset);offset+=chunk.length}
@@ -55,6 +60,16 @@ async function loadPayload(){
  const hex=Array.from(new Uint8Array(digest),x=>x.toString(16).padStart(2,'0')).join('');
  if(hex!==config.sha256){encryptedBytes=null;throw new Error('NETWORK')}
 }
+
+// Use password-entry time to fetch ciphertext, without storing or sending the password.
+input.addEventListener('focus',()=>{
+ if(!window.crypto?.subtle)return;
+ loadPayload().then(()=>{
+  if(!busy){say('相册已备好，输入密码就可以打开。');progress.hidden=true}
+ }).catch(()=>{
+  if(!busy){encryptedBytes=null;config=null;progress.hidden=true;say('请输入密码，点击后继续载入相册。')}
+ });
+},{once:true});
 
 function closeReader(){
  generation++;

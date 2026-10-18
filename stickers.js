@@ -3,8 +3,8 @@
  const heartMarkup='<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M31 55C24 48 7 36 7 22C7 6 27 6 32 20C40 6 58 11 57 25C56 37 39 51 31 55Z" fill="#ff8cba" stroke="#fffaf4" stroke-width="7" stroke-linejoin="round"/><path d="M17 20Q20 14 25 19" fill="none" stroke="#ffdce9" stroke-width="4" stroke-linecap="round"/></svg>';
  const svg=body=>'<svg viewBox="0 0 80 80" aria-hidden="true">'+body+'</svg>';
  const art={
-  flower:'<img src="stickers/flower.png" alt="" draggable="false">',
-  star:'<img src="stickers/star.png" alt="" draggable="false">',
+  flower:'<img src="stickers/flower.png?v=20261018e" alt="" draggable="false">',
+  star:'<img src="stickers/star.png?v=20261018e" alt="" draggable="false">',
   bubble:svg('<circle cx="40" cy="40" r="30" fill="#c6e9ff99" stroke="#fff" stroke-width="4"/><path d="M17 37Q19 18 35 17" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round"/><path d="M52 61Q64 54 64 40" fill="none" stroke="#ffacd7" stroke-width="6" stroke-linecap="round"/><circle cx="34" cy="41" r="2.5" fill="#496181"/><circle cx="48" cy="41" r="2.5" fill="#496181"/><path d="M36 49Q41 53 46 48" fill="none" stroke="#496181" stroke-width="2.5" stroke-linecap="round"/>'),
   moon:svg('<path d="M52 9C19 5 4 40 23 61C40 80 67 65 72 48C44 57 33 30 52 9Z" fill="#ffe6a0" stroke="#fffaf4" stroke-width="4"/><path d="M26 43Q30 48 34 43" fill="none" stroke="#76648d" stroke-width="3" stroke-linecap="round"/><ellipse cx="28" cy="51" rx="6" ry="3" fill="#ffacc6"/><path d="M62 15L65 23L74 26L65 29L62 38L59 29L50 26L59 23Z" fill="#c5b7f5" stroke="#fff" stroke-width="2"/>'),
   cloud:svg('<path d="M20 58C0 56 4 31 23 31C27 7 58 11 62 32C81 31 82 59 62 59Z" fill="#fff7fb" stroke="#b9d3ef" stroke-width="4"/><circle cx="31" cy="42" r="2.5" fill="#6a6c96"/><circle cx="49" cy="42" r="2.5" fill="#6a6c96"/><path d="M35 49Q40 54 45 49" fill="none" stroke="#6a6c96" stroke-width="2.5" stroke-linecap="round"/><ellipse cx="23" cy="48" rx="5" ry="3" fill="#ffbbd1"/><ellipse cx="57" cy="48" rx="5" ry="3" fill="#ffbbd1"/>'),
